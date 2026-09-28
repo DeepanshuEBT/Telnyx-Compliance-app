@@ -39,10 +39,22 @@ export const NUMBER_FEATURES: { value: string; label: string }[] = [
 ];
 
 /** Telnyx takes one location filter at a time, so the UI picks which. */
-export const SEARCH_BY: { value: string; label: string; placeholder: string }[] = [
-  { value: 'national_destination_code', label: 'Area code', placeholder: 'e.g. 212' },
+export const SEARCH_BY: {
+  value: string;
+  label: string;
+  placeholder: string;
+}[] = [
+  {
+    value: 'national_destination_code',
+    label: 'Area code',
+    placeholder: 'e.g. 212',
+  },
   { value: 'locality', label: 'City', placeholder: 'e.g. Chicago' },
-  { value: 'administrative_area', label: 'State or region', placeholder: 'e.g. IL' },
+  {
+    value: 'administrative_area',
+    label: 'State or region',
+    placeholder: 'e.g. IL',
+  },
   { value: 'rate_center', label: 'Rate center', placeholder: 'e.g. CHICAGO' },
 ];
 

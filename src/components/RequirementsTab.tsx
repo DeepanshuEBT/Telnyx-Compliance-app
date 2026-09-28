@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import { ACTIONS, COMMON_COUNTRIES, PHONE_NUMBER_TYPES } from '../constants';
 import { getRequirementsQueryOptions } from '../queries/query-options/requirements';
+import { useSubOrganizationId } from '../queries/useSubOrganizationId';
 import { describeCriteria } from '../validation';
 
 export function RequirementsTab() {
@@ -9,8 +10,10 @@ export function RequirementsTab() {
   const [phoneNumberType, setPhoneNumberType] = useState('local');
   const [action, setAction] = useState('ordering');
 
+  const subOrgId = useSubOrganizationId();
+
   const requirementsQuery = useQuery(
-    getRequirementsQueryOptions({
+    getRequirementsQueryOptions(subOrgId, {
       country_code: countryCode,
       phone_number_type: phoneNumberType,
       action,
@@ -22,7 +25,8 @@ export function RequirementsTab() {
   const error = (requirementsQuery.error as Error | null)?.message ?? null;
 
   const total = requirements.reduce(
-    (count, requirement) => count + (requirement.requirement_types?.length ?? 0),
+    (count, requirement) =>
+      count + (requirement.requirement_types?.length ?? 0),
     0,
   );
 
@@ -32,7 +36,9 @@ export function RequirementsTab() {
         <div className="card__body">
           <div className="filters">
             <div className="field">
-              <label className="label" htmlFor="country">Country</label>
+              <label className="label" htmlFor="country">
+                Country
+              </label>
               <select
                 id="country"
                 className="select"
@@ -48,7 +54,9 @@ export function RequirementsTab() {
             </div>
 
             <div className="field">
-              <label className="label" htmlFor="number-type">Number type</label>
+              <label className="label" htmlFor="number-type">
+                Number type
+              </label>
               <select
                 id="number-type"
                 className="select"
@@ -56,13 +64,17 @@ export function RequirementsTab() {
                 onChange={(event) => setPhoneNumberType(event.target.value)}
               >
                 {PHONE_NUMBER_TYPES.map((type) => (
-                  <option key={type.value} value={type.value}>{type.label}</option>
+                  <option key={type.value} value={type.value}>
+                    {type.label}
+                  </option>
                 ))}
               </select>
             </div>
 
             <div className="field">
-              <label className="label" htmlFor="action">Action</label>
+              <label className="label" htmlFor="action">
+                Action
+              </label>
               <select
                 id="action"
                 className="select"
@@ -70,7 +82,9 @@ export function RequirementsTab() {
                 onChange={(event) => setAction(event.target.value)}
               >
                 {ACTIONS.map((item) => (
-                  <option key={item.value} value={item.value}>{item.label}</option>
+                  <option key={item.value} value={item.value}>
+                    {item.label}
+                  </option>
                 ))}
               </select>
             </div>
@@ -89,13 +103,18 @@ export function RequirementsTab() {
       {error && <div className="banner banner--danger">{error}</div>}
 
       {loading ? (
-        <div className="card"><div className="state">Loading requirements…</div></div>
+        <div className="card">
+          <div className="state">Loading requirements…</div>
+        </div>
       ) : requirements.length === 0 ? (
         <div className="card">
           <div className="state">
-            <div className="state__title">Nothing published for this combination</div>
+            <div className="state__title">
+              Nothing published for this combination
+            </div>
             <div>
-              Telnyx lists no requirements for {countryCode} {phoneNumberType} numbers.
+              Telnyx lists no requirements for {countryCode} {phoneNumberType}{' '}
+              numbers.
             </div>
           </div>
         </div>
@@ -116,29 +135,39 @@ export function RequirementsTab() {
             )}
             <div className="card__body">
               <div className="req-list">
-                {(requirement.requirement_types ?? []).map((requirementType) => (
-                  <div className="req" key={requirementType.id}>
-                    <div className="req__head">
-                      <span className="req__name">{requirementType.name}</span>
-                      <span className="type-pill">{requirementType.type}</span>
-                    </div>
-                    {requirementType.description && (
-                      <p className="req__desc">{requirementType.description}</p>
-                    )}
-                    {requirementType.example && (
-                      <p className="req__example">
-                        For example: {requirementType.example}
-                      </p>
-                    )}
-                    <div className="req__criteria">
-                      {describeCriteria(requirementType.acceptance_criteria).map(
-                        (line) => (
-                          <span className="criterion" key={line}>{line}</span>
-                        ),
+                {(requirement.requirement_types ?? []).map(
+                  (requirementType) => (
+                    <div className="req" key={requirementType.id}>
+                      <div className="req__head">
+                        <span className="req__name">
+                          {requirementType.name}
+                        </span>
+                        <span className="type-pill">
+                          {requirementType.type}
+                        </span>
+                      </div>
+                      {requirementType.description && (
+                        <p className="req__desc">
+                          {requirementType.description}
+                        </p>
                       )}
+                      {requirementType.example && (
+                        <p className="req__example">
+                          For example: {requirementType.example}
+                        </p>
+                      )}
+                      <div className="req__criteria">
+                        {describeCriteria(
+                          requirementType.acceptance_criteria,
+                        ).map((line) => (
+                          <span className="criterion" key={line}>
+                            {line}
+                          </span>
+                        ))}
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  ),
+                )}
               </div>
             </div>
           </div>

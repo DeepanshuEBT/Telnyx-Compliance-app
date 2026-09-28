@@ -2,6 +2,7 @@ import { useMutation, useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import { api } from '../api';
 import { getSmsPlansQueryOptions } from '../queries/query-options/smsPlans';
+import { useSubOrganizationId } from '../queries/useSubOrganizationId';
 import type { PhoneNumber } from '../types';
 
 interface Props {
@@ -16,7 +17,8 @@ export function ChoosePlan({ number, onCancel, onConnected }: Props) {
 
   const countryCode = number.boxly?.cca_code ?? number.country_iso_alpha2 ?? '';
 
-  const plansQuery = useQuery(getSmsPlansQueryOptions(countryCode));
+  const subOrgId = useSubOrganizationId();
+  const plansQuery = useQuery(getSmsPlansQueryOptions(subOrgId, countryCode));
 
   const connectChannel = useMutation({
     mutationFn: (planName: string) =>
@@ -53,7 +55,11 @@ export function ChoosePlan({ number, onCancel, onConnected }: Props) {
           </div>
         </div>
         <div className="spacer" />
-        <button className="btn btn--ghost btn--sm" onClick={onCancel} disabled={saving}>
+        <button
+          className="btn btn--ghost btn--sm"
+          onClick={onCancel}
+          disabled={saving}
+        >
           Cancel
         </button>
       </div>

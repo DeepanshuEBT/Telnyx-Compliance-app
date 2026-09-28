@@ -51,16 +51,24 @@ export function ConfirmPurchase({
         if (event.target === event.currentTarget && !busy) onCancel();
       }}
     >
-      <div className="modal" role="dialog" aria-modal="true" aria-labelledby="confirm-title">
+      <div
+        className="modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="confirm-title"
+      >
         <div className="modal__head">
-          <h2 className="modal__title" id="confirm-title">Confirm this purchase</h2>
+          <h2 className="modal__title" id="confirm-title">
+            Confirm this purchase
+          </h2>
         </div>
 
         <div className="modal__body">
           <p>
-            You are about to buy <strong className="mono">{number.phone_number}</strong>.
-            Once you confirm, the number is bought and assigned to you, and the
-            charges below start.
+            You are about to buy{' '}
+            <strong className="mono">{number.phone_number}</strong>. Once you
+            confirm, the number is bought and assigned to you, and the charges
+            below start.
           </p>
 
           <dl className="summary">
@@ -70,7 +78,9 @@ export function ConfirmPurchase({
             </div>
             <div className="summary__row">
               <dt>Type</dt>
-              <dd>{number.phone_number_type} · {countryCode}</dd>
+              <dd>
+                {number.phone_number_type} · {countryCode}
+              </dd>
             </div>
             <div className="summary__row">
               <dt>One-off setup cost</dt>
@@ -82,13 +92,17 @@ export function ConfirmPurchase({
             </div>
             <div className="summary__row summary__row--total">
               <dt>Charged today</dt>
-              <dd><strong>{dueNow}</strong></dd>
+              <dd>
+                <strong>{dueNow}</strong>
+              </dd>
             </div>
             <div className="summary__row">
               <dt>Paperwork</dt>
               <dd>
                 {requirementGroup ? (
-                  <span className="mono">{requirementGroup.id.slice(0, 8)} (approved)</span>
+                  <span className="mono">
+                    {requirementGroup.id.slice(0, 8)} (approved)
+                  </span>
                 ) : (
                   'None attached'
                 )}
@@ -102,23 +116,32 @@ export function ConfirmPurchase({
           </div>
 
           {paperworkState === 'in-review' && (
-            <div className="banner banner--warning" style={{ marginTop: 12, marginBottom: 0 }}>
-              Your {countryCode} paperwork is still being reviewed by Telnyx, so it
-              cannot be attached yet. You will still be charged today, but the
-              number will not work until the review finishes.
+            <div
+              className="banner banner--warning"
+              style={{ marginTop: 12, marginBottom: 0 }}
+            >
+              Your {countryCode} paperwork is still being reviewed by Telnyx, so
+              it cannot be attached yet. You will still be charged today, but
+              the number will not work until the review finishes.
             </div>
           )}
 
           {paperworkState === 'declined' && (
-            <div className="banner banner--danger" style={{ marginTop: 12, marginBottom: 0 }}>
+            <div
+              className="banner banner--danger"
+              style={{ marginTop: 12, marginBottom: 0 }}
+            >
               Your {countryCode} paperwork was not accepted, so nothing can be
-              attached. Fix it under Requirement groups first, otherwise you will
-              be charged for a number you cannot use.
+              attached. Fix it under Requirement groups first, otherwise you
+              will be charged for a number you cannot use.
             </div>
           )}
 
           {paperworkState === 'none' && (
-            <div className="banner banner--info" style={{ marginTop: 12, marginBottom: 0 }}>
+            <div
+              className="banner banner--info"
+              style={{ marginTop: 12, marginBottom: 0 }}
+            >
               No requirement group is attached. If {countryCode} has regulatory
               requirements, the order will be held until the paperwork is done,
               and the number will not work until then.
@@ -135,7 +158,11 @@ export function ConfirmPurchase({
           >
             Cancel
           </button>
-          <button className="btn btn--primary" onClick={onConfirm} disabled={busy}>
+          <button
+            className="btn btn--primary"
+            onClick={onConfirm}
+            disabled={busy}
+          >
             {busy ? 'Buying…' : `Buy this number · ${dueNow} now`}
           </button>
         </div>

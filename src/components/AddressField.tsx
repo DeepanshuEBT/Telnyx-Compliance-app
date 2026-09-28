@@ -6,6 +6,7 @@ import {
   addressesQueryKey,
   getAddressesQueryOptions,
 } from '../queries/query-options/addresses';
+import { useSubOrganizationId } from '../queries/useSubOrganizationId';
 import type { AddressPayload, TelnyxAddress } from '../types';
 
 interface Props {
@@ -47,6 +48,7 @@ export function AddressField({
   onChange,
 }: Props) {
   const queryClient = useQueryClient();
+  const subOrgId = useSubOrganizationId();
   const [showForm, setShowForm] = useState(false);
   const [draft, setDraft] = useState<AddressPayload>({
     ...EMPTY,
@@ -56,16 +58,16 @@ export function AddressField({
 
   // A failed list leaves the picker empty and silent, as before: the customer
   // can still add an address, which is the way out of an empty list anyway.
-  const addressesQuery = useQuery(getAddressesQueryOptions());
+  const addressesQuery = useQuery(getAddressesQueryOptions(subOrgId));
   const addresses = addressesQuery.data ?? [];
 
   const createAddress = useMutation({
     mutationFn: (payload: AddressPayload) => api.createAddress(payload),
     onSuccess: (response) => {
-      queryClient.setQueryData<TelnyxAddress[]>(addressesQueryKey(), (current) => [
-        ...(current ?? []),
-        response.data,
-      ]);
+      queryClient.setQueryData<TelnyxAddress[]>(
+        addressesQueryKey(subOrgId),
+        (current) => [...(current ?? []), response.data],
+      );
       onChange(response.data.id);
       setShowForm(false);
       setDraft({ ...EMPTY, country_code: defaultCountryCode });
@@ -161,7 +163,9 @@ export function AddressField({
               <input
                 className="input"
                 value={draft.administrative_area ?? ''}
-                onChange={(event) => set('administrative_area', event.target.value)}
+                onChange={(event) =>
+                  set('administrative_area', event.target.value)
+                }
               />
             </div>
             <div className="field">

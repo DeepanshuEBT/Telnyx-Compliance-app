@@ -4,10 +4,12 @@ import { useNavigate } from 'react-router-dom';
 import { api } from '../api';
 import { ACTIONS, COMMON_COUNTRIES, PHONE_NUMBER_TYPES } from '../constants';
 import { getRequirementGroupsQueryOptions } from '../queries/query-options/requirementGroups';
+import { useSubOrganizationId } from '../queries/useSubOrganizationId';
 import { StatusBadge } from './StatusBadge';
 
 export function RequirementGroupsTab() {
   const navigate = useNavigate();
+  const subOrgId = useSubOrganizationId();
   const [createError, setCreateError] = useState<string | null>(null);
 
   const [countryCode, setCountryCode] = useState('GB');
@@ -16,7 +18,7 @@ export function RequirementGroupsTab() {
 
   // This component only renders on /groups, so opening a group unmounts it and
   // coming back remounts it, which re-runs the list and picks up any edits.
-  const groupsQuery = useQuery(getRequirementGroupsQueryOptions());
+  const groupsQuery = useQuery(getRequirementGroupsQueryOptions(subOrgId));
 
   const createGroup = useMutation({
     mutationFn: () =>
@@ -59,7 +61,9 @@ export function RequirementGroupsTab() {
           </p>
           <div className="filters">
             <div className="field">
-              <label className="label" htmlFor="new-country">Country</label>
+              <label className="label" htmlFor="new-country">
+                Country
+              </label>
               <select
                 id="new-country"
                 className="select"
@@ -74,7 +78,9 @@ export function RequirementGroupsTab() {
               </select>
             </div>
             <div className="field">
-              <label className="label" htmlFor="new-type">Number type</label>
+              <label className="label" htmlFor="new-type">
+                Number type
+              </label>
               <select
                 id="new-type"
                 className="select"
@@ -82,12 +88,16 @@ export function RequirementGroupsTab() {
                 onChange={(event) => setPhoneNumberType(event.target.value)}
               >
                 {PHONE_NUMBER_TYPES.map((type) => (
-                  <option key={type.value} value={type.value}>{type.label}</option>
+                  <option key={type.value} value={type.value}>
+                    {type.label}
+                  </option>
                 ))}
               </select>
             </div>
             <div className="field">
-              <label className="label" htmlFor="new-action">Action</label>
+              <label className="label" htmlFor="new-action">
+                Action
+              </label>
               <select
                 id="new-action"
                 className="select"
@@ -95,11 +105,17 @@ export function RequirementGroupsTab() {
                 onChange={(event) => setAction(event.target.value)}
               >
                 {ACTIONS.map((item) => (
-                  <option key={item.value} value={item.value}>{item.label}</option>
+                  <option key={item.value} value={item.value}>
+                    {item.label}
+                  </option>
                 ))}
               </select>
             </div>
-            <button className="btn btn--primary" onClick={handleCreate} disabled={creating}>
+            <button
+              className="btn btn--primary"
+              onClick={handleCreate}
+              disabled={creating}
+            >
               {creating ? 'Creating…' : 'Create group'}
             </button>
           </div>
@@ -149,10 +165,14 @@ export function RequirementGroupsTab() {
                   className="is-clickable"
                   onClick={() => navigate(`/groups/${group.id}`)}
                 >
-                  <td><strong>{group.country_code}</strong></td>
+                  <td>
+                    <strong>{group.country_code}</strong>
+                  </td>
                   <td>{group.phone_number_type}</td>
                   <td>{group.action}</td>
-                  <td><StatusBadge status={group.status} /></td>
+                  <td>
+                    <StatusBadge status={group.status} />
+                  </td>
                   <td className="mono">{group.id}</td>
                 </tr>
               ))}

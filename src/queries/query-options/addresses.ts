@@ -1,10 +1,11 @@
 import { queryOptions } from '@tanstack/react-query';
 import { api } from '../../api';
 
-export const addressesQueryKey = () => ['addresses'] as const;
+export const addressesQueryKey = (subOrgId: string) =>
+  ['addresses', subOrgId] as const;
 
-export const getAddressesQueryOptions = () =>
+export const getAddressesQueryOptions = (subOrgId: string) =>
   queryOptions({
-    queryKey: addressesQueryKey(),
+    queryKey: addressesQueryKey(subOrgId),
     queryFn: () => api.listAddresses().then((response) => response.data),
   });

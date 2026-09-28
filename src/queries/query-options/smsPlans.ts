@@ -1,11 +1,14 @@
 import { queryOptions } from '@tanstack/react-query';
 import { api } from '../../api';
 
-export const smsPlansQueryKey = (countryCode: string) =>
-  ['sms-plans', countryCode] as const;
+export const smsPlansQueryKey = (subOrgId: string, countryCode: string) =>
+  ['sms-plans', subOrgId, countryCode] as const;
 
-export const getSmsPlansQueryOptions = (countryCode: string) =>
+export const getSmsPlansQueryOptions = (
+  subOrgId: string,
+  countryCode: string,
+) =>
   queryOptions({
-    queryKey: smsPlansQueryKey(countryCode),
+    queryKey: smsPlansQueryKey(subOrgId, countryCode),
     queryFn: () => api.smsPlans(countryCode).then((response) => response.data),
   });

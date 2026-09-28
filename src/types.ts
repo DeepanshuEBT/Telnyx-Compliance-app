@@ -1,9 +1,5 @@
 export type PhoneNumberType =
-  | 'local'
-  | 'national'
-  | 'toll_free'
-  | 'mobile'
-  | 'shared_cost';
+  'local' | 'national' | 'toll_free' | 'mobile' | 'shared_cost';
 
 export type RequirementAction = 'ordering' | 'porting' | 'branded_calling';
 

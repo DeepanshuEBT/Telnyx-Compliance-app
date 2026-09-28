@@ -7,15 +7,19 @@ export interface RequirementsParams {
   action: string;
 }
 
-export const requirementsQueryKey = (params: RequirementsParams) =>
-  ['requirements', params] as const;
+export const requirementsQueryKey = (
+  subOrgId: string,
+  params: RequirementsParams,
+) => ['requirements', subOrgId, params] as const;
 
 export const getRequirementsQueryOptions = (
+  subOrgId: string,
   params: RequirementsParams,
   enabled = true,
 ) =>
   queryOptions({
-    queryKey: requirementsQueryKey(params),
-    queryFn: () => api.listRequirements(params).then((response) => response.data),
+    queryKey: requirementsQueryKey(subOrgId, params),
+    queryFn: () =>
+      api.listRequirements(params).then((response) => response.data),
     enabled,
   });

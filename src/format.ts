@@ -2,7 +2,10 @@
  * Telnyx sends money as a 5dp string ("2.00000"). Render it the way a price is
  * normally written, and never silently drop a cost that is genuinely zero.
  */
-export function formatCost(value?: string | null, currency?: string | null): string {
+export function formatCost(
+  value?: string | null,
+  currency?: string | null,
+): string {
   if (value === undefined || value === null || value === '') return '—';
   const amount = Number(value);
   if (Number.isNaN(amount)) return '—';

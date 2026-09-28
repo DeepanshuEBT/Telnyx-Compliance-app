@@ -7,6 +7,7 @@ import {
   requirementGroupsQueryKey,
 } from '../queries/query-options/requirementGroups';
 import { getRequirementsQueryOptions } from '../queries/query-options/requirements';
+import { useSubOrganizationId } from '../queries/useSubOrganizationId';
 import type { Requirement, RequirementGroup, RequirementType } from '../types';
 import { validateRequirementValue } from '../validation';
 import { RequirementField } from './RequirementField';
@@ -21,13 +22,16 @@ const EDITABLE_STATUSES = new Set(['unapproved', 'declined']);
 
 export function GroupDetail({ groupId, onBack }: Props) {
   const queryClient = useQueryClient();
+  const subOrgId = useSubOrganizationId();
 
   const [values, setValues] = useState<Record<string, string>>({});
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [notice, setNotice] = useState<string | null>(null);
   const [mutationError, setMutationError] = useState<string | null>(null);
 
-  const groupQuery = useQuery(getRequirementGroupQueryOptions(groupId));
+  const groupQuery = useQuery(
+    getRequirementGroupQueryOptions(subOrgId, groupId),
+  );
   const group = groupQuery.data ?? null;
 
   // The group stores values against requirement ids but not what those ids
@@ -35,6 +39,7 @@ export function GroupDetail({ groupId, onBack }: Props) {
   // requirements published for this country and number type.
   const requirementsQuery = useQuery(
     getRequirementsQueryOptions(
+      subOrgId,
       {
         country_code: group?.country_code ?? '',
         phone_number_type: group?.phone_number_type ?? '',
@@ -81,7 +86,9 @@ export function GroupDetail({ groupId, onBack }: Props) {
     },
     onSuccess: (response) => {
       applyGroup(response.data);
-      setNotice('Submitted. Telnyx will review it and the status here will update.');
+      setNotice(
+        'Submitted. Telnyx will review it and the status here will update.',
+      );
     },
     onError: (err) => setMutationError((err as Error).message),
   });
@@ -89,8 +96,13 @@ export function GroupDetail({ groupId, onBack }: Props) {
   function applyGroup(updated: RequirementGroup) {
     // Write straight to the cache rather than invalidating: a refetch here
     // would race the form and is not needed, the response is the new truth.
-    queryClient.setQueryData(requirementGroupQueryKey(groupId), updated);
-    queryClient.invalidateQueries({ queryKey: requirementGroupsQueryKey() });
+    queryClient.setQueryData(
+      requirementGroupQueryKey(subOrgId, groupId),
+      updated,
+    );
+    queryClient.invalidateQueries({
+      queryKey: requirementGroupsQueryKey(subOrgId),
+    });
   }
 
   // A group that failed to load leaves the requirements query disabled, and a
@@ -109,18 +121,22 @@ export function GroupDetail({ groupId, onBack }: Props) {
   const reviewStatuses = useMemo(() => {
     const map: Record<string, string> = {};
     (group?.regulatory_requirements ?? []).forEach((requirement) => {
-      if (requirement.status) map[requirement.requirement_id] = requirement.status;
+      if (requirement.status)
+        map[requirement.requirement_id] = requirement.status;
     });
     return map;
   }, [group]);
 
   const declinedCount = useMemo(
-    () => Object.values(reviewStatuses).filter((status) => status === 'declined').length,
+    () =>
+      Object.values(reviewStatuses).filter((status) => status === 'declined')
+        .length,
     [reviewStatuses],
   );
 
   const filledCount = useMemo(
-    () => requirementTypes.filter((type) => (values[type.id] ?? '').trim()).length,
+    () =>
+      requirementTypes.filter((type) => (values[type.id] ?? '').trim()).length,
     [requirementTypes, values],
   );
 
@@ -162,21 +178,31 @@ export function GroupDetail({ groupId, onBack }: Props) {
   }
 
   if (loading) {
-    return <div className="card"><div className="state">Loading…</div></div>;
+    return (
+      <div className="card">
+        <div className="state">Loading…</div>
+      </div>
+    );
   }
 
   if (!group) {
     return (
       <div className="stack">
-        <button className="breadcrumb" onClick={onBack}>← Back to requirement groups</button>
-        <div className="banner banner--danger">{error ?? 'Requirement group not found.'}</div>
+        <button className="breadcrumb" onClick={onBack}>
+          ← Back to requirement groups
+        </button>
+        <div className="banner banner--danger">
+          {error ?? 'Requirement group not found.'}
+        </div>
       </div>
     );
   }
 
   return (
     <div className="stack">
-      <button className="breadcrumb" onClick={onBack}>← Back to requirement groups</button>
+      <button className="breadcrumb" onClick={onBack}>
+        ← Back to requirement groups
+      </button>
 
       <div className="card">
         <div className="card__header">
@@ -228,7 +254,10 @@ export function GroupDetail({ groupId, onBack }: Props) {
                   countryCode={group.country_code}
                   reviewStatus={reviewStatuses[requirementType.id]}
                   onChange={(value) => {
-                    setValues((current) => ({ ...current, [requirementType.id]: value }));
+                    setValues((current) => ({
+                      ...current,
+                      [requirementType.id]: value,
+                    }));
                     setErrors((current) => {
                       const next = { ...current };
                       delete next[requirementType.id];
@@ -247,10 +276,18 @@ export function GroupDetail({ groupId, onBack }: Props) {
               {filledCount} of {requirementTypes.length} answered
             </span>
             <div className="spacer" />
-            <button className="btn btn--ghost" onClick={handleSave} disabled={saving}>
+            <button
+              className="btn btn--ghost"
+              onClick={handleSave}
+              disabled={saving}
+            >
               Save progress
             </button>
-            <button className="btn btn--primary" onClick={handleSubmit} disabled={saving}>
+            <button
+              className="btn btn--primary"
+              onClick={handleSubmit}
+              disabled={saving}
+            >
               {saving ? 'Working…' : 'Submit for approval'}
             </button>
           </div>
@@ -260,7 +297,9 @@ export function GroupDetail({ groupId, onBack }: Props) {
   );
 }
 
-function collectRequirementTypes(requirements: Requirement[]): RequirementType[] {
+function collectRequirementTypes(
+  requirements: Requirement[],
+): RequirementType[] {
   const byId = new Map<string, RequirementType>();
   requirements.forEach((requirement) => {
     (requirement.requirement_types ?? []).forEach((requirementType) => {

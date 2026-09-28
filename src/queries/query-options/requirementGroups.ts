@@ -1,20 +1,23 @@
 import { queryOptions } from '@tanstack/react-query';
 import { api } from '../../api';
 
-export const requirementGroupsQueryKey = () => ['requirement-groups'] as const;
+export const requirementGroupsQueryKey = (subOrgId: string) =>
+  ['requirement-groups', subOrgId] as const;
 
-export const requirementGroupQueryKey = (groupId: string) =>
-  ['requirement-groups', groupId] as const;
+export const requirementGroupQueryKey = (subOrgId: string, groupId: string) =>
+  ['requirement-groups', subOrgId, groupId] as const;
 
-export const getRequirementGroupsQueryOptions = (enabled = true) =>
+export const getRequirementGroupsQueryOptions = (subOrgId: string) =>
   queryOptions({
-    queryKey: requirementGroupsQueryKey(),
+    queryKey: requirementGroupsQueryKey(subOrgId),
     queryFn: () => api.listGroups().then((response) => response.data),
-    enabled,
   });
 
-export const getRequirementGroupQueryOptions = (groupId: string) =>
+export const getRequirementGroupQueryOptions = (
+  subOrgId: string,
+  groupId: string,
+) =>
   queryOptions({
-    queryKey: requirementGroupQueryKey(groupId),
+    queryKey: requirementGroupQueryKey(subOrgId, groupId),
     queryFn: () => api.getGroup(groupId).then((response) => response.data),
   });

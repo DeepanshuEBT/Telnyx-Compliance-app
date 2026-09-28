@@ -13,6 +13,7 @@ import {
   getAvailableNumbersQueryOptions,
 } from '../queries/query-options/phoneNumbers';
 import { getRequirementGroupsQueryOptions } from '../queries/query-options/requirementGroups';
+import { useSubOrganizationId } from '../queries/useSubOrganizationId';
 import type { AvailableNumber } from '../types';
 import { formatCost, formatRateCenter, formatRegion } from '../format';
 import { ConfirmPurchase } from './ConfirmPurchase';
@@ -27,6 +28,7 @@ export function BuyNumber({ onOrdered }: Props) {
   const phoneNumberType = criteria.phone_number_type;
 
   const queryClient = useQueryClient();
+  const subOrgId = useSubOrganizationId();
 
   // A search is an action, not a subscription, so each press gets its own key.
   // That makes repeating a search really re-run it, and means a slow response
@@ -46,13 +48,14 @@ export function BuyNumber({ onOrdered }: Props) {
 
   // Never claim the customer has no paperwork just because the call failed or
   // has not come back yet -- that is how an approved group goes unattached.
-  const groupsQuery = useQuery(getRequirementGroupsQueryOptions());
+  const groupsQuery = useQuery(getRequirementGroupsQueryOptions(subOrgId));
   const groups = groupsQuery.data ?? [];
   const groupsLoading = groupsQuery.isPending;
   const groupsError = (groupsQuery.error as Error | null)?.message ?? null;
 
   const searchQuery = useQuery(
     getAvailableNumbersQueryOptions(
+      subOrgId,
       search?.nonce ?? 0,
       search?.params ?? {},
       Boolean(search),
@@ -79,7 +82,7 @@ export function BuyNumber({ onOrdered }: Props) {
       // Take the bought number off the list that is on screen, as before.
       if (search) {
         queryClient.setQueryData<AvailableNumber[]>(
-          availableNumbersQueryKey(search.nonce, search.params),
+          availableNumbersQueryKey(subOrgId, search.nonce, search.params),
           (current) =>
             (current ?? []).filter(
               (item) => item.phone_number !== number.phone_number,
@@ -108,13 +111,17 @@ export function BuyNumber({ onOrdered }: Props) {
       group.country_code === countryCode &&
       group.phone_number_type === phoneNumberType,
   );
-  const usableGroups = matchingGroups.filter((group) => group.status === 'approved');
+  const usableGroups = matchingGroups.filter(
+    (group) => group.status === 'approved',
+  );
   // Not attachable, but worth telling the customer about: buying now means the
   // order sits waiting on paperwork they have already started.
   const pendingGroup = matchingGroups.find(
     (group) => group.status === 'pending-approval',
   );
-  const declinedGroup = matchingGroups.find((group) => group.status === 'declined');
+  const declinedGroup = matchingGroups.find(
+    (group) => group.status === 'declined',
+  );
 
   // Attach approved paperwork by default. Leaving this to the customer means a
   // group they got approved quietly goes unused and the order is held anyway.
@@ -170,7 +177,9 @@ export function BuyNumber({ onOrdered }: Props) {
         <div className="card">
           <div className="card__body">
             <div className="field field--grow">
-              <label className="label" htmlFor="buy-group">Requirement group</label>
+              <label className="label" htmlFor="buy-group">
+                Requirement group
+              </label>
               <select
                 id="buy-group"
                 className="select"
@@ -213,11 +222,12 @@ export function BuyNumber({ onOrdered }: Props) {
                         ? `Your ${countryCode} ${phoneNumberType} paperwork is still being reviewed by Telnyx. Buying now means the order waits until it is approved.`
                         : declinedGroup
                           ? `Your ${countryCode} ${phoneNumberType} paperwork was not accepted. Fix it under Requirement groups before buying.`
-                        : `No requirement group for ${countryCode} ${phoneNumberType} yet. Countries with regulatory requirements will hold the order until the paperwork is done.`}
+                          : `No requirement group for ${countryCode} ${phoneNumberType} yet. Countries with regulatory requirements will hold the order until the paperwork is done.`}
               </span>
               {matchingGroups.length > usableGroups.length && (
                 <span className="hint">
-                  Groups that are not approved yet are listed but cannot be picked.
+                  Groups that are not approved yet are listed but cannot be
+                  picked.
                 </span>
               )}
             </div>
@@ -229,7 +239,9 @@ export function BuyNumber({ onOrdered }: Props) {
       {notice && <div className="banner banner--success">{notice}</div>}
 
       {searching && (
-        <div className="card"><div className="state">Searching Telnyx…</div></div>
+        <div className="card">
+          <div className="state">Searching Telnyx…</div>
+        </div>
       )}
 
       {!searching && results !== null && (
@@ -247,8 +259,8 @@ export function BuyNumber({ onOrdered }: Props) {
               <div className="state__title">Nothing available</div>
               <div>
                 Try a different number type or drop a feature. SMS in particular
-                is only offered on certain number types, and which ones varies by
-                country.
+                is only offered on certain number types, and which ones varies
+                by country.
               </div>
             </div>
           ) : (
@@ -267,10 +279,13 @@ export function BuyNumber({ onOrdered }: Props) {
               <tbody>
                 {results.map((number) => (
                   <tr key={number.phone_number}>
-                    <td className="mono"><strong>{number.phone_number}</strong></td>
+                    <td className="mono">
+                      <strong>{number.phone_number}</strong>
+                    </td>
                     <td>
                       <span className="type-pill">
-                        {(number.phone_number_type ?? '').replace('_', ' ') || '—'}
+                        {(number.phone_number_type ?? '').replace('_', ' ') ||
+                          '—'}
                       </span>
                     </td>
                     <td>

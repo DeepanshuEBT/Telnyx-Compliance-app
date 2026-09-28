@@ -72,7 +72,9 @@ export function RequirementField({
 
       <div className="req__criteria">
         {describeCriteria(criteria).map((line) => (
-          <span className="criterion" key={line}>{line}</span>
+          <span className="criterion" key={line}>
+            {line}
+          </span>
         ))}
       </div>
 
@@ -90,7 +92,9 @@ export function RequirementField({
             {uploading && <span className="hint">Uploading…</span>}
             {!uploading && value && (
               <span className="badge badge--success">
-                {uploadedName ? `${uploadedName} uploaded` : 'Document attached'}
+                {uploadedName
+                  ? `${uploadedName} uploaded`
+                  : 'Document attached'}
               </span>
             )}
           </div>
@@ -110,7 +114,9 @@ export function RequirementField({
           >
             <option value="">Select…</option>
             {acceptableValues.map((option) => (
-              <option key={option} value={option}>{option}</option>
+              <option key={option} value={option}>
+                {option}
+              </option>
             ))}
           </select>
         ) : (

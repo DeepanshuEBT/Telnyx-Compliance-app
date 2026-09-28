@@ -15,7 +15,8 @@ import type {
 } from './types';
 
 const BASE_URL =
-  import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000/api/telnyx_compliance';
+  import.meta.env.VITE_API_BASE_URL ??
+  'http://localhost:8000/api/telnyx_compliance';
 
 const TOKEN_KEY = 'compliance_token';
 
@@ -99,7 +100,8 @@ export const api = {
   listRequirementTypes: () =>
     request<Envelope<RequirementType[]>>('/requirement_types'),
 
-  listGroups: () => request<Envelope<RequirementGroup[]>>('/requirement_groups'),
+  listGroups: () =>
+    request<Envelope<RequirementGroup[]>>('/requirement_groups'),
 
   createGroup: (body: {
     country_code: string;
@@ -152,18 +154,24 @@ export const api = {
         query.set(key, String(value));
       }
     });
-    return request<Envelope<AvailableNumber[]>>(`/available_phone_numbers?${query}`);
+    return request<Envelope<AvailableNumber[]>>(
+      `/available_phone_numbers?${query}`,
+    );
   },
 
   listPhoneNumbers: () => request<Envelope<PhoneNumber[]>>('/phone_numbers'),
 
   releasePhoneNumber: (id: string) =>
-    request<Envelope<{ id: string }>>(`/phone_numbers/${id}`, { method: 'DELETE' }),
+    request<Envelope<{ id: string }>>(`/phone_numbers/${id}`, {
+      method: 'DELETE',
+    }),
 
   listNumberOrders: () => request<Envelope<NumberOrder[]>>('/number_orders'),
 
   smsPlans: (countryCode: string) =>
-    request<Envelope<SmsPlanCatalogue>>(`/sms_plans?country_code=${countryCode}`),
+    request<Envelope<SmsPlanCatalogue>>(
+      `/sms_plans?country_code=${countryCode}`,
+    ),
 
   createNumberOrder: (body: {
     phone_number: string;

@@ -30,7 +30,6 @@ told, or a refresh on `/groups/<id>` returns a 404:
 - Netlify: `/*  /index.html  200` in `_redirects`
 - S3 or CloudFront: point the error document at `index.html`
 
-
 ## Running it
 
 The backend proxy lives in `enquirybox/apps/telnyx_compliance`. Nothing here

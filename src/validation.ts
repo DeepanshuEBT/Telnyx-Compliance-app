@@ -29,7 +29,10 @@ export function validateRequirementValue(
     }
   }
 
-  if (criteria.regex && !matchesPattern(trimmed, criteria.regex, criteria.case_sensitive)) {
+  if (
+    criteria.regex &&
+    !matchesPattern(trimmed, criteria.regex, criteria.case_sensitive)
+  ) {
     return 'This is not in the format Telnyx expects.';
   }
 
@@ -41,7 +44,10 @@ export function validateRequirementValue(
     return `Must be ${criteria.max_length} characters or fewer.`;
   }
 
-  const offending = findDisallowedCharacters(trimmed, criteria.acceptable_characters);
+  const offending = findDisallowedCharacters(
+    trimmed,
+    criteria.acceptable_characters,
+  );
   if (offending) {
     return `Cannot contain ${offending}. Allowed: ${criteria.acceptable_characters}.`;
   }
@@ -86,10 +92,14 @@ export function describeCriteria(criteria?: AcceptanceCriteria): string[] {
   if (!criteria) return [];
 
   const described: string[] = [];
-  if (criteria.time_limit) described.push(`Dated within ${criteria.time_limit}`);
-  if (criteria.locality_limit) described.push(`Must be in ${criteria.locality_limit}`);
-  if (criteria.min_length != null) described.push(`Min ${criteria.min_length} chars`);
-  if (criteria.max_length != null) described.push(`Max ${criteria.max_length} chars`);
+  if (criteria.time_limit)
+    described.push(`Dated within ${criteria.time_limit}`);
+  if (criteria.locality_limit)
+    described.push(`Must be in ${criteria.locality_limit}`);
+  if (criteria.min_length != null)
+    described.push(`Min ${criteria.min_length} chars`);
+  if (criteria.max_length != null)
+    described.push(`Max ${criteria.max_length} chars`);
   if (criteria.acceptable_values?.length) {
     described.push(`One of: ${criteria.acceptable_values.join(', ')}`);
   }

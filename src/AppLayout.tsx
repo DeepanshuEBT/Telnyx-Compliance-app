@@ -46,7 +46,9 @@ export function AppLayout() {
               <NavLink
                 key={item.to}
                 to={item.to}
-                className={({ isActive }) => `tab ${isActive ? 'tab--active' : ''}`}
+                className={({ isActive }) =>
+                  `tab ${isActive ? 'tab--active' : ''}`
+                }
               >
                 {item.label}
               </NavLink>
@@ -57,7 +59,9 @@ export function AppLayout() {
 
       <main className="main">
         {checking ? (
-          <div className="card"><div className="state">Checking your link…</div></div>
+          <div className="card">
+            <div className="state">Checking your link…</div>
+          </div>
         ) : authError ? (
           <div className="card">
             <div className="state">

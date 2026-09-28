@@ -8,6 +8,7 @@ import {
   numberOrdersQueryKey,
   phoneNumbersQueryKey,
 } from '../queries/query-options/phoneNumbers';
+import { useSubOrganizationId } from '../queries/useSubOrganizationId';
 import type { PhoneNumber } from '../types';
 import { BuyNumber } from './BuyNumber';
 import { ChoosePlan } from './ChoosePlan';
@@ -42,16 +43,19 @@ export function PhoneNumbersTab() {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const location = useLocation();
+  const subOrgId = useSubOrganizationId();
 
   const section = sectionFromPath(location.pathname);
   const setSection = (next: Section) => navigate(SECTION_PATHS[next]);
 
   const [releaseError, setReleaseError] = useState<string | null>(null);
-  const [choosingPlanFor, setChoosingPlanFor] = useState<PhoneNumber | null>(null);
+  const [choosingPlanFor, setChoosingPlanFor] = useState<PhoneNumber | null>(
+    null,
+  );
   const [justConnected, setJustConnected] = useState<string | null>(null);
 
-  const numbersQuery = useQuery(getPhoneNumbersQueryOptions());
-  const ordersQuery = useQuery(getNumberOrdersQueryOptions());
+  const numbersQuery = useQuery(getPhoneNumbersQueryOptions(subOrgId));
+  const ordersQuery = useQuery(getNumberOrdersQueryOptions(subOrgId));
 
   const releaseNumber = useMutation({
     mutationFn: (numberId: string) => api.releasePhoneNumber(numberId),
@@ -59,8 +63,9 @@ export function PhoneNumbersTab() {
       setReleaseError(null);
       // Drop the row from the cache rather than refetching, which is what the
       // component did before and keeps the table from flashing.
-      queryClient.setQueryData<PhoneNumber[]>(phoneNumbersQueryKey(), (current) =>
-        (current ?? []).filter((item) => item.id !== numberId),
+      queryClient.setQueryData<PhoneNumber[]>(
+        phoneNumbersQueryKey(subOrgId),
+        (current) => (current ?? []).filter((item) => item.id !== numberId),
       );
     },
     onError: (err) => setReleaseError((err as Error).message),
@@ -78,8 +83,8 @@ export function PhoneNumbersTab() {
 
   function reload() {
     setReleaseError(null);
-    queryClient.invalidateQueries({ queryKey: phoneNumbersQueryKey() });
-    queryClient.invalidateQueries({ queryKey: numberOrdersQueryKey() });
+    queryClient.invalidateQueries({ queryKey: phoneNumbersQueryKey(subOrgId) });
+    queryClient.invalidateQueries({ queryKey: numberOrdersQueryKey(subOrgId) });
   }
 
   // Replace rather than push: the buy screen they are being moved off is not
@@ -151,12 +156,12 @@ export function PhoneNumbersTab() {
         !alreadyConnected &&
         readyForPlan.length > 0 &&
         section !== 'buy' && (
-        <div className="banner banner--info">
-          {readyForPlan.length === 1
-            ? `${readyForPlan[0].phone_number} is ready. Choose a plan to start using it.`
-            : `${readyForPlan.length} numbers are ready and need a plan.`}
-        </div>
-      )}
+          <div className="banner banner--info">
+            {readyForPlan.length === 1
+              ? `${readyForPlan[0].phone_number} is ready. Choose a plan to start using it.`
+              : `${readyForPlan.length} numbers are ready and need a plan.`}
+          </div>
+        )}
 
       {choosingPlanFor ? (
         <ChoosePlan
@@ -171,7 +176,9 @@ export function PhoneNumbersTab() {
       ) : section === 'buy' ? (
         <BuyNumber onOrdered={reload} />
       ) : loading ? (
-        <div className="card"><div className="state">Loading…</div></div>
+        <div className="card">
+          <div className="state">Loading…</div>
+        </div>
       ) : section === 'mine' ? (
         <div className="card">
           <div className="card__header">
@@ -204,9 +211,13 @@ export function PhoneNumbersTab() {
               <tbody>
                 {numbers.map((number) => (
                   <tr key={number.id}>
-                    <td className="mono"><strong>{number.phone_number}</strong></td>
+                    <td className="mono">
+                      <strong>{number.phone_number}</strong>
+                    </td>
                     <td>
-                      <span className={`badge badge--${number.status === 'active' ? 'success' : 'neutral'}`}>
+                      <span
+                        className={`badge badge--${number.status === 'active' ? 'success' : 'neutral'}`}
+                      >
                         {number.status ?? 'unknown'}
                       </span>
                     </td>
@@ -222,7 +233,9 @@ export function PhoneNumbersTab() {
                           className="btn btn--primary btn--sm"
                           disabled={alreadyConnected}
                           title={
-                            alreadyConnected ? ALREADY_CONNECTED_HINT : undefined
+                            alreadyConnected
+                              ? ALREADY_CONNECTED_HINT
+                              : undefined
                           }
                           onClick={() => setChoosingPlanFor(number)}
                         >
@@ -274,7 +287,9 @@ export function PhoneNumbersTab() {
           {orders.length === 0 ? (
             <div className="state">
               <div className="state__title">No orders yet</div>
-              <div>Orders you place show up here with their regulatory status.</div>
+              <div>
+                Orders you place show up here with their regulatory status.
+              </div>
             </div>
           ) : (
             <table className="table">
@@ -292,7 +307,9 @@ export function PhoneNumbersTab() {
                   <tr key={order.id}>
                     <td className="mono">{order.id.slice(0, 8)}</td>
                     <td>
-                      <span className={`badge badge--${ORDER_TONE[order.status ?? ''] ?? 'neutral'}`}>
+                      <span
+                        className={`badge badge--${ORDER_TONE[order.status ?? ''] ?? 'neutral'}`}
+                      >
                         {order.status ?? 'unknown'}
                       </span>
                     </td>
@@ -307,7 +324,9 @@ export function PhoneNumbersTab() {
                       {order.requirements_met === true ? (
                         <span className="badge badge--success">Met</span>
                       ) : order.requirements_met === false ? (
-                        <span className="badge badge--warning">Outstanding</span>
+                        <span className="badge badge--warning">
+                          Outstanding
+                        </span>
                       ) : (
                         '—'
                       )}

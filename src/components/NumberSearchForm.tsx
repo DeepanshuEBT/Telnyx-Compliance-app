@@ -89,10 +89,18 @@ const TOGGLES: { key: keyof SearchCriteria; label: string; hint: string }[] = [
   },
 ];
 
-export function NumberSearchForm({ criteria, searching, onChange, onSearch }: Props) {
+export function NumberSearchForm({
+  criteria,
+  searching,
+  onChange,
+  onSearch,
+}: Props) {
   const [advanced, setAdvanced] = useState(false);
 
-  function set<K extends keyof SearchCriteria>(key: K, value: SearchCriteria[K]) {
+  function set<K extends keyof SearchCriteria>(
+    key: K,
+    value: SearchCriteria[K],
+  ) {
     onChange({ ...criteria, [key]: value });
   }
 
@@ -121,7 +129,9 @@ export function NumberSearchForm({ criteria, searching, onChange, onSearch }: Pr
           </div>
 
           <div className="field">
-            <label className="label" htmlFor="buy-type">Type</label>
+            <label className="label" htmlFor="buy-type">
+              Type
+            </label>
             <select
               id="buy-type"
               className="select"
@@ -130,13 +140,17 @@ export function NumberSearchForm({ criteria, searching, onChange, onSearch }: Pr
             >
               <option value="">All types</option>
               {PHONE_NUMBER_TYPES.map((type) => (
-                <option key={type.value} value={type.value}>{type.label}</option>
+                <option key={type.value} value={type.value}>
+                  {type.label}
+                </option>
               ))}
             </select>
           </div>
 
           <div className="field">
-            <label className="label" htmlFor="buy-searchby">Search by</label>
+            <label className="label" htmlFor="buy-searchby">
+              Search by
+            </label>
             <select
               id="buy-searchby"
               className="select"
@@ -152,7 +166,9 @@ export function NumberSearchForm({ criteria, searching, onChange, onSearch }: Pr
               }
             >
               {SEARCH_BY.map((item) => (
-                <option key={item.value} value={item.value}>{item.label}</option>
+                <option key={item.value} value={item.value}>
+                  {item.label}
+                </option>
               ))}
             </select>
           </div>
@@ -183,7 +199,9 @@ export function NumberSearchForm({ criteria, searching, onChange, onSearch }: Pr
                       set(
                         'features',
                         criteria.features.includes(feature.value)
-                          ? criteria.features.filter((item) => item !== feature.value)
+                          ? criteria.features.filter(
+                              (item) => item !== feature.value,
+                            )
                           : [...criteria.features, feature.value],
                       )
                     }
@@ -203,7 +221,11 @@ export function NumberSearchForm({ criteria, searching, onChange, onSearch }: Pr
             Advanced search {advanced ? '▴' : '▾'}
           </button>
           <div className="spacer" />
-          <button className="btn btn--primary" onClick={onSearch} disabled={searching}>
+          <button
+            className="btn btn--primary"
+            onClick={onSearch}
+            disabled={searching}
+          >
             {searching ? 'Searching…' : 'Search numbers'}
           </button>
         </div>
@@ -212,32 +234,44 @@ export function NumberSearchForm({ criteria, searching, onChange, onSearch }: Pr
           <div className="advanced">
             <div className="filters">
               <div className="field">
-                <label className="label" htmlFor="buy-match">Phone number</label>
+                <label className="label" htmlFor="buy-match">
+                  Phone number
+                </label>
                 <select
                   id="buy-match"
                   className="select"
                   value={criteria.number_match_type}
-                  onChange={(event) => set('number_match_type', event.target.value)}
+                  onChange={(event) =>
+                    set('number_match_type', event.target.value)
+                  }
                 >
                   {NUMBER_MATCH_TYPES.map((item) => (
-                    <option key={item.value} value={item.value}>{item.label}</option>
+                    <option key={item.value} value={item.value}>
+                      {item.label}
+                    </option>
                   ))}
                 </select>
               </div>
 
               <div className="field field--grow">
-                <label className="label" htmlFor="buy-matchvalue">Digits</label>
+                <label className="label" htmlFor="buy-matchvalue">
+                  Digits
+                </label>
                 <input
                   id="buy-matchvalue"
                   className="input"
                   placeholder="e.g. 7700"
                   value={criteria.number_match_value}
-                  onChange={(event) => set('number_match_value', event.target.value)}
+                  onChange={(event) =>
+                    set('number_match_value', event.target.value)
+                  }
                 />
               </div>
 
               <div className="field">
-                <label className="label" htmlFor="buy-block">Consecutive numbers</label>
+                <label className="label" htmlFor="buy-block">
+                  Consecutive numbers
+                </label>
                 <input
                   id="buy-block"
                   className="input"
@@ -246,12 +280,16 @@ export function NumberSearchForm({ criteria, searching, onChange, onSearch }: Pr
                   min={2}
                   placeholder="any"
                   value={criteria.minimum_block_size}
-                  onChange={(event) => set('minimum_block_size', event.target.value)}
+                  onChange={(event) =>
+                    set('minimum_block_size', event.target.value)
+                  }
                 />
               </div>
 
               <div className="field">
-                <label className="label" htmlFor="buy-limit">Results limit</label>
+                <label className="label" htmlFor="buy-limit">
+                  Results limit
+                </label>
                 <input
                   id="buy-limit"
                   className="input"
