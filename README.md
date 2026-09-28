@@ -4,7 +4,7 @@ Standalone frontend where an international customer fulfils the Telnyx
 regulatory requirements for a phone number themselves, so we stop collecting
 documents over email.
 
-Two tabs, mirroring Telnyx's own Compliance section:
+Three tabs. The first two mirror Telnyx's own Compliance section:
 
 - **Requirements** — browse what Telnyx demands for a country, number type and
   action, with its own description, example and acceptance criteria per item.
@@ -12,6 +12,24 @@ Two tabs, mirroring Telnyx's own Compliance section:
   and watch its status. A group can be fulfilled and approved before any number
   order exists, which is what lets the customer do their paperwork independently
   of us buying anything.
+- **Phone numbers** — search Telnyx inventory, buy a number against an approved
+  group, then pick an SMS plan and connect the channel. One number per account,
+  so buying is only offered while they have none.
+
+## Serving it
+
+The app uses real routes (`/groups`, `/groups/<id>`, `/numbers/buy`), so a
+refresh keeps the customer where they were and the browser's back button works
+inside the app.
+
+That needs the server to fall back to `index.html` for any path it does not
+recognise. `vite dev` and `vite preview` already do. Anything else has to be
+told, or a refresh on `/groups/<id>` returns a 404:
+
+- nginx: `try_files $uri $uri/ /index.html;`
+- Netlify: `/*  /index.html  200` in `_redirects`
+- S3 or CloudFront: point the error document at `index.html`
+
 
 ## Running it
 

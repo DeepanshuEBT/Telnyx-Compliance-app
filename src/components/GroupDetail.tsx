@@ -1,5 +1,12 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { api } from '../api';
+import {
+  getRequirementGroupQueryOptions,
+  requirementGroupQueryKey,
+  requirementGroupsQueryKey,
+} from '../queries/query-options/requirementGroups';
+import { getRequirementsQueryOptions } from '../queries/query-options/requirements';
 import type { Requirement, RequirementGroup, RequirementType } from '../types';
 import { validateRequirementValue } from '../validation';
 import { RequirementField } from './RequirementField';
@@ -13,51 +20,89 @@ interface Props {
 const EDITABLE_STATUSES = new Set(['unapproved', 'declined']);
 
 export function GroupDetail({ groupId, onBack }: Props) {
-  const [group, setGroup] = useState<RequirementGroup | null>(null);
-  const [requirementTypes, setRequirementTypes] = useState<RequirementType[]>([]);
+  const queryClient = useQueryClient();
+
   const [values, setValues] = useState<Record<string, string>>({});
   const [errors, setErrors] = useState<Record<string, string>>({});
-
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [mutationError, setMutationError] = useState<string | null>(null);
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const groupResponse = await api.getGroup(groupId);
-      const loadedGroup = groupResponse.data;
-      setGroup(loadedGroup);
+  const groupQuery = useQuery(getRequirementGroupQueryOptions(groupId));
+  const group = groupQuery.data ?? null;
 
-      // The group stores values against requirement ids but not what those ids
-      // mean, so the labels, help text and validation rules come from the
-      // requirements published for this country and number type.
-      const requirementsResponse = await api.listRequirements({
-        country_code: loadedGroup.country_code,
-        phone_number_type: loadedGroup.phone_number_type,
-        action: loadedGroup.action,
-      });
-      setRequirementTypes(collectRequirementTypes(requirementsResponse.data));
+  // The group stores values against requirement ids but not what those ids
+  // mean, so the labels, help text and validation rules come from the
+  // requirements published for this country and number type.
+  const requirementsQuery = useQuery(
+    getRequirementsQueryOptions(
+      {
+        country_code: group?.country_code ?? '',
+        phone_number_type: group?.phone_number_type ?? '',
+        action: group?.action ?? '',
+      },
+      Boolean(group),
+    ),
+  );
 
-      const existing: Record<string, string> = {};
-      (loadedGroup.regulatory_requirements ?? []).forEach((requirement) => {
-        if (requirement.field_value) {
-          existing[requirement.requirement_id] = requirement.field_value;
-        }
-      });
-      setValues(existing);
-    } catch (err) {
-      setError((err as Error).message);
-    } finally {
-      setLoading(false);
-    }
-  }, [groupId]);
+  const requirementTypes = useMemo(
+    () => collectRequirementTypes(requirementsQuery.data ?? []),
+    [requirementsQuery.data],
+  );
 
+  // Seed the form once per group. Re-seeding whenever the group data changes
+  // would throw away whatever the customer has typed the moment a save or a
+  // refetch comes back.
+  const seededGroupId = useRef<string | null>(null);
   useEffect(() => {
-    load();
-  }, [load]);
+    if (!group || seededGroupId.current === groupId) return;
+    const existing: Record<string, string> = {};
+    (group.regulatory_requirements ?? []).forEach((requirement) => {
+      if (requirement.field_value) {
+        existing[requirement.requirement_id] = requirement.field_value;
+      }
+    });
+    setValues(existing);
+    seededGroupId.current = groupId;
+  }, [group, groupId]);
+
+  const saveGroup = useMutation({
+    mutationFn: () => api.updateGroup(groupId, buildPayload()),
+    onSuccess: (response) => {
+      applyGroup(response.data);
+      setNotice('Saved. You can come back and finish this later.');
+    },
+    onError: (err) => setMutationError((err as Error).message),
+  });
+
+  const submitGroup = useMutation({
+    mutationFn: async () => {
+      await api.updateGroup(groupId, buildPayload());
+      return api.submitGroup(groupId);
+    },
+    onSuccess: (response) => {
+      applyGroup(response.data);
+      setNotice('Submitted. Telnyx will review it and the status here will update.');
+    },
+    onError: (err) => setMutationError((err as Error).message),
+  });
+
+  function applyGroup(updated: RequirementGroup) {
+    // Write straight to the cache rather than invalidating: a refetch here
+    // would race the form and is not needed, the response is the new truth.
+    queryClient.setQueryData(requirementGroupQueryKey(groupId), updated);
+    queryClient.invalidateQueries({ queryKey: requirementGroupsQueryKey() });
+  }
+
+  // A group that failed to load leaves the requirements query disabled, and a
+  // disabled query reads as pending forever, so it only counts once we have one.
+  const loading =
+    groupQuery.isPending || (Boolean(group) && requirementsQuery.isPending);
+  const saving = saveGroup.isPending || submitGroup.isPending;
+  const error =
+    mutationError ??
+    (groupQuery.error as Error | null)?.message ??
+    (requirementsQuery.error as Error | null)?.message ??
+    null;
 
   const editable = group ? EDITABLE_STATUSES.has(group.status) : false;
 
@@ -98,39 +143,22 @@ export function GroupDetail({ groupId, onBack }: Props) {
       }));
   }
 
-  async function handleSave() {
-    setSaving(true);
+  function handleSave() {
     setNotice(null);
-    setError(null);
-    try {
-      const response = await api.updateGroup(groupId, buildPayload());
-      setGroup(response.data);
-      setNotice('Saved. You can come back and finish this later.');
-    } catch (err) {
-      setError((err as Error).message);
-    } finally {
-      setSaving(false);
-    }
+    setMutationError(null);
+    saveGroup.mutate();
   }
 
-  async function handleSubmit() {
+  function handleSubmit() {
     if (!validateAll()) {
-      setError('Some answers still need fixing before this can be submitted.');
+      setMutationError(
+        'Some answers still need fixing before this can be submitted.',
+      );
       return;
     }
-    setSaving(true);
     setNotice(null);
-    setError(null);
-    try {
-      await api.updateGroup(groupId, buildPayload());
-      const response = await api.submitGroup(groupId);
-      setGroup(response.data);
-      setNotice('Submitted. Telnyx will review it and the status here will update.');
-    } catch (err) {
-      setError((err as Error).message);
-    } finally {
-      setSaving(false);
-    }
+    setMutationError(null);
+    submitGroup.mutate();
   }
 
   if (loading) {

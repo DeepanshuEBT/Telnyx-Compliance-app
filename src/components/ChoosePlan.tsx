@@ -1,6 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useMutation, useQuery } from '@tanstack/react-query';
+import { useState } from 'react';
 import { api } from '../api';
-import type { PhoneNumber, SmsPlanCatalogue } from '../types';
+import { getSmsPlansQueryOptions } from '../queries/query-options/smsPlans';
+import type { PhoneNumber } from '../types';
 
 interface Props {
   number: PhoneNumber;
@@ -9,46 +11,33 @@ interface Props {
 }
 
 export function ChoosePlan({ number, onCancel, onConnected }: Props) {
-  const [catalogue, setCatalogue] = useState<SmsPlanCatalogue | null>(null);
   const [chosenPlanName, setChosenPlanName] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [connectError, setConnectError] = useState<string | null>(null);
 
   const countryCode = number.boxly?.cca_code ?? number.country_iso_alpha2 ?? '';
 
-  useEffect(() => {
-    let cancelled = false;
-    api
-      .smsPlans(countryCode)
-      .then((response) => {
-        if (!cancelled) setCatalogue(response.data);
-      })
-      .catch((err) => {
-        if (!cancelled) setError((err as Error).message);
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [countryCode]);
+  const plansQuery = useQuery(getSmsPlansQueryOptions(countryCode));
+
+  const connectChannel = useMutation({
+    mutationFn: (planName: string) =>
+      api.connectSmsChannel({
+        phone_number: number.phone_number,
+        plan_name: planName,
+      }),
+    onSuccess: () => onConnected(),
+    onError: (err) => setConnectError((err as Error).message),
+  });
+
+  const catalogue = plansQuery.data ?? null;
+  const loading = plansQuery.isPending;
+  const saving = connectChannel.isPending;
+  const error =
+    connectError ?? (plansQuery.error as Error | null)?.message ?? null;
 
   function handleConfirm() {
     if (chosenPlanName === null) return;
-    setSaving(true);
-    setError(null);
-    api
-      .connectSmsChannel({
-        phone_number: number.phone_number,
-        plan_name: chosenPlanName,
-      })
-      .then(() => onConnected())
-      .catch((err) => {
-        setError((err as Error).message);
-        setSaving(false);
-      });
+    setConnectError(null);
+    connectChannel.mutate(chosenPlanName);
   }
 
   const symbol = catalogue?.currency_symbol ?? '';

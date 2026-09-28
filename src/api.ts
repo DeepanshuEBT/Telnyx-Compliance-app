@@ -1,6 +1,7 @@
 import type {
   AddressPayload,
   AvailableNumber,
+  ConnectedSmsChannel,
   NumberOrder,
   PageMeta,
   PhoneNumber,
@@ -8,7 +9,6 @@ import type {
   RequirementGroup,
   RequirementGroupStatus,
   RequirementType,
-  ConnectedSmsChannel,
   SmsPlanCatalogue,
   TelnyxAddress,
   TelnyxDocument,
@@ -24,6 +24,10 @@ const TOKEN_KEY = 'compliance_token';
  * keep it for the session, and strip it from the address bar so it does not end
  * up in screenshots or shared links.
  */
+export function hasStoredToken(): boolean {
+  return Boolean(sessionStorage.getItem(TOKEN_KEY));
+}
+
 export function resolveToken(): string | null {
   const fromUrl = new URLSearchParams(window.location.search).get('token');
   if (fromUrl) {

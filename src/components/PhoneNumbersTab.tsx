@@ -1,10 +1,36 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useEffect, useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { api } from '../api';
-import type { NumberOrder, PhoneNumber } from '../types';
+import {
+  getNumberOrdersQueryOptions,
+  getPhoneNumbersQueryOptions,
+  numberOrdersQueryKey,
+  phoneNumbersQueryKey,
+} from '../queries/query-options/phoneNumbers';
+import type { PhoneNumber } from '../types';
 import { BuyNumber } from './BuyNumber';
 import { ChoosePlan } from './ChoosePlan';
 
 type Section = 'mine' | 'orders' | 'buy';
+
+const SECTION_PATHS: Record<Section, string> = {
+  mine: '/numbers',
+  orders: '/numbers/orders',
+  buy: '/numbers/buy',
+};
+
+function sectionFromPath(pathname: string): Section {
+  if (pathname.endsWith('/orders')) return 'orders';
+  if (pathname.endsWith('/buy')) return 'buy';
+  return 'mine';
+}
+
+const ALREADY_CONNECTED_HINT =
+  'Your SMS channel is already connected to another number.';
+const CONNECTED_NUMBER_HINT =
+  'This number is connected to your SMS channel. ' +
+  'Get in touch with us to change it.';
 
 const ORDER_TONE: Record<string, string> = {
   success: 'success',
@@ -13,39 +39,57 @@ const ORDER_TONE: Record<string, string> = {
 };
 
 export function PhoneNumbersTab() {
-  const [section, setSection] = useState<Section>('mine');
-  const [numbers, setNumbers] = useState<PhoneNumber[]>([]);
-  const [orders, setOrders] = useState<NumberOrder[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [releasing, setReleasing] = useState<string | null>(null);
+  const queryClient = useQueryClient();
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  const section = sectionFromPath(location.pathname);
+  const setSection = (next: Section) => navigate(SECTION_PATHS[next]);
+
+  const [releaseError, setReleaseError] = useState<string | null>(null);
   const [choosingPlanFor, setChoosingPlanFor] = useState<PhoneNumber | null>(null);
   const [justConnected, setJustConnected] = useState<string | null>(null);
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const [numbersResponse, ordersResponse] = await Promise.all([
-        api.listPhoneNumbers(),
-        api.listNumberOrders(),
-      ]);
-      setNumbers(numbersResponse.data);
-      setOrders(ordersResponse.data);
-    } catch (err) {
-      setError((err as Error).message);
-    } finally {
-      setLoading(false);
+  const numbersQuery = useQuery(getPhoneNumbersQueryOptions());
+  const ordersQuery = useQuery(getNumberOrdersQueryOptions());
+
+  const releaseNumber = useMutation({
+    mutationFn: (numberId: string) => api.releasePhoneNumber(numberId),
+    onSuccess: (_response, numberId) => {
+      setReleaseError(null);
+      // Drop the row from the cache rather than refetching, which is what the
+      // component did before and keeps the table from flashing.
+      queryClient.setQueryData<PhoneNumber[]>(phoneNumbersQueryKey(), (current) =>
+        (current ?? []).filter((item) => item.id !== numberId),
+      );
+    },
+    onError: (err) => setReleaseError((err as Error).message),
+  });
+
+  const numbers = numbersQuery.data ?? [];
+  const orders = ordersQuery.data ?? [];
+  const loading = numbersQuery.isPending || ordersQuery.isPending;
+  const releasing = releaseNumber.isPending ? releaseNumber.variables : null;
+  const error =
+    releaseError ??
+    (numbersQuery.error as Error | null)?.message ??
+    (ordersQuery.error as Error | null)?.message ??
+    null;
+
+  function reload() {
+    setReleaseError(null);
+    queryClient.invalidateQueries({ queryKey: phoneNumbersQueryKey() });
+    queryClient.invalidateQueries({ queryKey: numberOrdersQueryKey() });
+  }
+
+  // Replace rather than push: the buy screen they are being moved off is not
+  // somewhere the back button should return them to.
+  const numberCount = numbers.length;
+  useEffect(() => {
+    if (numberCount > 0 && section === 'buy') {
+      navigate(SECTION_PATHS.mine, { replace: true });
     }
-  }, []);
-
-  useEffect(() => {
-    load();
-  }, [load]);
-
-  useEffect(() => {
-    if (numbers.length > 0 && section === 'buy') setSection('mine');
-  }, [numbers, section]);
+  }, [numberCount, section, navigate]);
 
   const readyForPlan = numbers.filter(
     (number) => number.boxly?.verified && !number.boxly?.connected,
@@ -56,22 +100,14 @@ export function PhoneNumbersTab() {
   // appears and then vanishes. The backend refuses a second one either way.
   const canBuy = !loading && numbers.length === 0;
 
-  async function handleRelease(number: PhoneNumber) {
+  function handleRelease(number: PhoneNumber) {
     const confirmed = window.confirm(
       `Release ${number.phone_number}? This gives the number up permanently and it cannot be recovered.`,
     );
     if (!confirmed) return;
 
-    setReleasing(number.id);
-    setError(null);
-    try {
-      await api.releasePhoneNumber(number.id);
-      setNumbers((current) => current.filter((item) => item.id !== number.id));
-    } catch (err) {
-      setError((err as Error).message);
-    } finally {
-      setReleasing(null);
-    }
+    setReleaseError(null);
+    releaseNumber.mutate(number.id);
   }
 
   return (
@@ -129,11 +165,11 @@ export function PhoneNumbersTab() {
           onConnected={() => {
             setJustConnected(choosingPlanFor.phone_number);
             setChoosingPlanFor(null);
-            load();
+            reload();
           }}
         />
       ) : section === 'buy' ? (
-        <BuyNumber onOrdered={load} />
+        <BuyNumber onOrdered={reload} />
       ) : loading ? (
         <div className="card"><div className="state">Loading…</div></div>
       ) : section === 'mine' ? (
@@ -141,7 +177,13 @@ export function PhoneNumbersTab() {
           <div className="card__header">
             <div className="card__title">My numbers</div>
             <div className="spacer" />
-            <button className="btn btn--ghost btn--sm" onClick={load}>Refresh</button>
+            <button
+              className="btn btn--ghost btn--sm"
+              onClick={reload}
+              disabled={numbersQuery.isFetching || ordersQuery.isFetching}
+            >
+              Refresh
+            </button>
           </div>
           {numbers.length === 0 ? (
             <div className="state">
@@ -180,9 +222,7 @@ export function PhoneNumbersTab() {
                           className="btn btn--primary btn--sm"
                           disabled={alreadyConnected}
                           title={
-                            alreadyConnected
-                              ? 'Your SMS channel is already connected to another number.'
-                              : undefined
+                            alreadyConnected ? ALREADY_CONNECTED_HINT : undefined
                           }
                           onClick={() => setChoosingPlanFor(number)}
                         >
@@ -199,10 +239,12 @@ export function PhoneNumbersTab() {
                     <td style={{ textAlign: 'right' }}>
                       <button
                         className="btn btn--danger btn--sm"
-                        disabled={releasing === number.id || number.boxly?.connected}
+                        disabled={
+                          releasing === number.id || number.boxly?.connected
+                        }
                         title={
                           number.boxly?.connected
-                            ? 'This number is connected to your SMS channel. Get in touch with us to change it.'
+                            ? CONNECTED_NUMBER_HINT
                             : undefined
                         }
                         onClick={() => handleRelease(number)}
@@ -221,7 +263,13 @@ export function PhoneNumbersTab() {
           <div className="card__header">
             <div className="card__title">Orders</div>
             <div className="spacer" />
-            <button className="btn btn--ghost btn--sm" onClick={load}>Refresh</button>
+            <button
+              className="btn btn--ghost btn--sm"
+              onClick={reload}
+              disabled={numbersQuery.isFetching || ordersQuery.isFetching}
+            >
+              Refresh
+            </button>
           </div>
           {orders.length === 0 ? (
             <div className="state">

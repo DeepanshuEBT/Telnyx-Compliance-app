@@ -90,6 +90,7 @@ p { margin: 0; }
   appearance: none;
   border: 0;
   background: none;
+  text-decoration: none;
   padding: 14px 4px;
   margin-right: 20px;
   font: inherit;

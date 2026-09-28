@@ -1,75 +1,48 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useMutation, useQuery } from '@tanstack/react-query';
+import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { api } from '../api';
 import { ACTIONS, COMMON_COUNTRIES, PHONE_NUMBER_TYPES } from '../constants';
-import type { RequirementGroup } from '../types';
-import { GroupDetail } from './GroupDetail';
+import { getRequirementGroupsQueryOptions } from '../queries/query-options/requirementGroups';
 import { StatusBadge } from './StatusBadge';
 
 export function RequirementGroupsTab() {
-  const [groups, setGroups] = useState<RequirementGroup[]>([]);
-  const [openGroupId, setOpenGroupId] = useState<string | null>(null);
-  const [creating, setCreating] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
+  const navigate = useNavigate();
+  const [createError, setCreateError] = useState<string | null>(null);
 
   const [countryCode, setCountryCode] = useState('GB');
   const [phoneNumberType, setPhoneNumberType] = useState('local');
   const [action, setAction] = useState('ordering');
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const response = await api.listGroups();
-      setGroups(response.data);
-    } catch (err) {
-      setError((err as Error).message);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  // This component only renders on /groups, so opening a group unmounts it and
+  // coming back remounts it, which re-runs the list and picks up any edits.
+  const groupsQuery = useQuery(getRequirementGroupsQueryOptions());
 
-  useEffect(() => {
-    if (!openGroupId) load();
-  }, [openGroupId, load]);
-
-  async function handleCreate() {
-    setCreating(true);
-    setError(null);
-    setNotice(null);
-    try {
-      const response = await api.createGroup({
+  const createGroup = useMutation({
+    mutationFn: () =>
+      api.createGroup({
         country_code: countryCode,
         phone_number_type: phoneNumberType,
         action,
-      });
-      if (response.reused) {
-        setNotice(
-          `You already have a ${countryCode} ${phoneNumberType} group, so we have opened that one rather than starting a second.`,
-        );
-      }
-      setOpenGroupId(response.data.id);
-    } catch (err) {
-      setError((err as Error).message);
-    } finally {
-      setCreating(false);
-    }
-  }
+      }),
+    onSuccess: (response) => {
+      const notice = response.reused
+        ? `You already have a ${countryCode} ${phoneNumberType} group, so we have opened that one rather than starting a second.`
+        : undefined;
+      navigate(`/groups/${response.data.id}`, { state: { notice } });
+    },
+    onError: (err) => setCreateError((err as Error).message),
+  });
 
-  if (openGroupId) {
-    return (
-      <div className="stack">
-        {notice && <div className="banner banner--info">{notice}</div>}
-        <GroupDetail
-          groupId={openGroupId}
-          onBack={() => {
-            setOpenGroupId(null);
-            setNotice(null);
-          }}
-        />
-      </div>
-    );
+  const groups = groupsQuery.data ?? [];
+  const creating = createGroup.isPending;
+  const loading = groupsQuery.isPending;
+  const error =
+    createError ?? (groupsQuery.error as Error | null)?.message ?? null;
+
+  function handleCreate() {
+    setCreateError(null);
+    createGroup.mutate();
   }
 
   return (
@@ -134,13 +107,19 @@ export function RequirementGroupsTab() {
       </div>
 
       {error && <div className="banner banner--danger">{error}</div>}
-      {notice && <div className="banner banner--info">{notice}</div>}
 
       <div className="card">
         <div className="card__header">
           <div className="card__title">Your requirement groups</div>
           <div className="spacer" />
-          <button className="btn btn--ghost btn--sm" onClick={load} disabled={loading}>
+          <button
+            className="btn btn--ghost btn--sm"
+            onClick={() => {
+              setCreateError(null);
+              groupsQuery.refetch();
+            }}
+            disabled={groupsQuery.isFetching}
+          >
             Refresh
           </button>
         </div>
@@ -168,7 +147,7 @@ export function RequirementGroupsTab() {
                 <tr
                   key={group.id}
                   className="is-clickable"
-                  onClick={() => setOpenGroupId(group.id)}
+                  onClick={() => navigate(`/groups/${group.id}`)}
                 >
                   <td><strong>{group.country_code}</strong></td>
                   <td>{group.phone_number_type}</td>

@@ -1,7 +1,7 @@
-import { useEffect, useState } from 'react';
-import { api } from '../api';
+import { useQuery } from '@tanstack/react-query';
+import { useState } from 'react';
 import { ACTIONS, COMMON_COUNTRIES, PHONE_NUMBER_TYPES } from '../constants';
-import type { Requirement } from '../types';
+import { getRequirementsQueryOptions } from '../queries/query-options/requirements';
 import { describeCriteria } from '../validation';
 
 export function RequirementsTab() {
@@ -9,35 +9,17 @@ export function RequirementsTab() {
   const [phoneNumberType, setPhoneNumberType] = useState('local');
   const [action, setAction] = useState('ordering');
 
-  const [requirements, setRequirements] = useState<Requirement[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const requirementsQuery = useQuery(
+    getRequirementsQueryOptions({
+      country_code: countryCode,
+      phone_number_type: phoneNumberType,
+      action,
+    }),
+  );
 
-  useEffect(() => {
-    let cancelled = false;
-    setLoading(true);
-    setError(null);
-
-    api
-      .listRequirements({
-        country_code: countryCode,
-        phone_number_type: phoneNumberType,
-        action,
-      })
-      .then((response) => {
-        if (!cancelled) setRequirements(response.data);
-      })
-      .catch((err) => {
-        if (!cancelled) setError(err.message);
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [countryCode, phoneNumberType, action]);
+  const requirements = requirementsQuery.data ?? [];
+  const loading = requirementsQuery.isPending;
+  const error = (requirementsQuery.error as Error | null)?.message ?? null;
 
   const total = requirements.reduce(
     (count, requirement) => count + (requirement.requirement_types?.length ?? 0),

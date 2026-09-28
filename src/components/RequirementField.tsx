@@ -1,3 +1,4 @@
+import { useMutation } from '@tanstack/react-query';
 import { useState } from 'react';
 import { api } from '../api';
 import type { RequirementType } from '../types';
@@ -24,25 +25,26 @@ export function RequirementField({
   reviewStatus,
   onChange,
 }: Props) {
-  const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [uploadedName, setUploadedName] = useState<string | null>(null);
+
+  const uploadDocument = useMutation({
+    mutationFn: (file: File) => api.uploadDocument(file),
+    onSuccess: (response, file) => {
+      onChange(response.data.id);
+      setUploadedName(file.name);
+    },
+    onError: (err) => setUploadError((err as Error).message),
+  });
+
+  const uploading = uploadDocument.isPending;
 
   const criteria = requirementType.acceptance_criteria;
   const acceptableValues = criteria?.acceptable_values ?? [];
 
-  async function handleFile(file: File) {
-    setUploading(true);
+  function handleFile(file: File) {
     setUploadError(null);
-    try {
-      const response = await api.uploadDocument(file);
-      onChange(response.data.id);
-      setUploadedName(file.name);
-    } catch (err) {
-      setUploadError((err as Error).message);
-    } finally {
-      setUploading(false);
-    }
+    uploadDocument.mutate(file);
   }
 
   const declined = reviewStatus === 'declined';

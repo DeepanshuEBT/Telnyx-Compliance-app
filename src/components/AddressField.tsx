@@ -1,6 +1,11 @@
-import { useEffect, useState } from 'react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useState } from 'react';
 import { api } from '../api';
 import { COMMON_COUNTRIES } from '../constants';
+import {
+  addressesQueryKey,
+  getAddressesQueryOptions,
+} from '../queries/query-options/addresses';
 import type { AddressPayload, TelnyxAddress } from '../types';
 
 interface Props {
@@ -41,38 +46,40 @@ export function AddressField({
   defaultCountryCode,
   onChange,
 }: Props) {
-  const [addresses, setAddresses] = useState<TelnyxAddress[]>([]);
+  const queryClient = useQueryClient();
   const [showForm, setShowForm] = useState(false);
   const [draft, setDraft] = useState<AddressPayload>({
     ...EMPTY,
     country_code: defaultCountryCode,
   });
-  const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    api
-      .listAddresses()
-      .then((response) => setAddresses(response.data))
-      .catch(() => setAddresses([]));
-  }, []);
+  // A failed list leaves the picker empty and silent, as before: the customer
+  // can still add an address, which is the way out of an empty list anyway.
+  const addressesQuery = useQuery(getAddressesQueryOptions());
+  const addresses = addressesQuery.data ?? [];
 
-  const selected = addresses.find((address) => address.id === value);
-
-  async function handleCreate() {
-    setSaving(true);
-    setError(null);
-    try {
-      const response = await api.createAddress(draft);
-      setAddresses((current) => [...current, response.data]);
+  const createAddress = useMutation({
+    mutationFn: (payload: AddressPayload) => api.createAddress(payload),
+    onSuccess: (response) => {
+      queryClient.setQueryData<TelnyxAddress[]>(addressesQueryKey(), (current) => [
+        ...(current ?? []),
+        response.data,
+      ]);
       onChange(response.data.id);
       setShowForm(false);
       setDraft({ ...EMPTY, country_code: defaultCountryCode });
-    } catch (err) {
-      setError((err as Error).message);
-    } finally {
-      setSaving(false);
-    }
+      setError(null);
+    },
+    onError: (err) => setError((err as Error).message),
+  });
+
+  const saving = createAddress.isPending;
+  const selected = addresses.find((address) => address.id === value);
+
+  function handleCreate() {
+    setError(null);
+    createAddress.mutate(draft);
   }
 
   function set(field: keyof AddressPayload, fieldValue: string) {
